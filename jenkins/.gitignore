@@ -1,0 +1,6 @@
+.terraform*
+*.tfstate*
+*.pem
+jenkins
+jenkins.pub
+inventory.ini

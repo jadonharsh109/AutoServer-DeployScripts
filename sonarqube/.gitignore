@@ -1,0 +1,6 @@
+.terraform*
+*.tfstate*
+*.pem
+sonarqube
+sonarqube.pub
+inventory.ini

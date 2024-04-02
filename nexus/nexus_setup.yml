@@ -1,0 +1,109 @@
+---
+- hosts: nexus
+  become: true
+  vars:
+    nexus_data_volume: /ubuntu/nexus
+    nexus_port: 8081
+    arch_mapping:  # Map ansible architecture {{ ansible_architecture }} names to Docker's architecture names
+      x86_64: amd64
+      aarch64: arm64
+
+  tasks:
+    - name: Update and upgrade all packages to the latest version
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - software-properties-common
+
+    - name: Create directory for Docker's GPG key
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker's official GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        keyring: /etc/apt/keyrings/docker.gpg
+        state: present
+
+    - name: Print architecture variables
+      ansible.builtin.debug:
+        msg: "Architecture: {{ ansible_architecture }}, Codename: {{ ansible_lsb.codename }}"
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}
+          signed-by=/etc/apt/keyrings/docker.gpg]
+          https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        filename: docker
+        state: present
+
+    - name: Install Docker and related packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+
+    - name: Set permissions on Docker socket
+      file:
+        path: /var/run/docker.sock
+        mode: '0666'
+
+    - name: Pull nexus Docker image
+      docker_image:
+        name: sonatype/nexus3
+        state: present
+        source: pull
+
+    - name: Run nexus container
+      docker_container:
+        name: nexus
+        image: sonatype/nexus3
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ nexus_port }}:8081"
+        volumes:
+          - "nexus_data:/nexus-data"
+          - "/var/run/docker.sock:/var/run/docker.sock"
+          
+    - name: Wait for Nexus to fully start
+      ansible.builtin.pause:
+        seconds: 60
+      delegate_to: localhost
+          
+    - name: Get Nexus admin password
+      ansible.builtin.command:
+        cmd: "docker exec -i nexus cat /nexus-data/admin.password"
+      register: nexus_password
+      changed_when: false
+
+    - name: Print the Nexus admin password
+      debug:
+        msg: "The Nexus admin password is {{ nexus_password.stdout }}"
+
+
+  handlers:
+    - name: Restart Docker
+      service:
+        name: docker
+        state: restarted
+
+

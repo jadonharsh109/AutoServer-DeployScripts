@@ -1,0 +1,6 @@
+.terraform*
+*.tfstate*
+*.pem
+nexus
+nexus.pub
+inventory.ini
