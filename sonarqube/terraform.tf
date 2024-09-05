@@ -11,6 +11,7 @@ resource "aws_key_pair" "sonarqube-key-pair" {
 resource "aws_security_group" "sonarqube_security_group" {
   name        = "Sonarqube_Security_group"
   description = "Sonarqube_Security_group is created by Terraform"
+  vpc_id      = var.vpc_id
 
   dynamic "ingress" {
     for_each = [22, 8081, 9000]
@@ -36,7 +37,7 @@ resource "aws_security_group" "sonarqube_security_group" {
 }
 
 resource "aws_instance" "sonarqube_instance" {
-  ami             = var.ami_id
+  ami             = var.ubuntu_ami_id
   instance_type   = "t2.medium"
   key_name        = aws_key_pair.sonarqube-key-pair.key_name
   security_groups = ["${aws_security_group.sonarqube_security_group.name}"]

@@ -49,6 +49,47 @@ run_terraform() {
         exit 1
     fi
 
+    # Fetch the default VPC ID using AWS CLI
+    default_vpc_id=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
+
+    # Fetch the current AWS region using AWS CLI
+    aws_region=$(aws configure get region)
+
+    # Fetch the latest Ubuntu 22.04 AMI ID using AWS CLI
+    ubuntu_ami_id=$(aws ec2 describe-images \
+        --owners 099720109477 \
+        --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
+                  "Name=architecture,Values=x86_64" \
+        --query 'Images | sort_by(@, &CreationDate)[-1].ImageId' \
+        --region "$aws_region")
+
+    # Check if the VPC ID was retrieved successfully
+    if [ "$default_vpc_id" == "None" ]; then
+        echo "No default VPC found. Please ensure that a default VPC exists in your AWS account."
+        exit 1
+    fi
+
+    # Check if AWS region is retrieved successfully
+    if [ -z "$aws_region" ]; then
+        echo "AWS region not configured. Please configure the AWS CLI with a default region."
+        exit 1
+    fi
+
+    # Check if AMI ID was retrieved successfully
+    if [ -z "$ubuntu_ami_id" ]; then
+        echo "Failed to retrieve Ubuntu 22.04 AMI ID."
+        exit 1
+    fi
+
+    # Create or update the terraform.tfvars file with the VPC ID, region, and AMI ID
+    cat > terraform.tfvars <<EOL
+vpc_id  = "$default_vpc_id"
+region  = "$aws_region"
+ubuntu_ami_id  = $ubuntu_ami_id
+EOL
+
+    echo "terraform.tfvars file has been updated with the default VPC ID, region, and Ubuntu AMI ID."
+    echo
     echo "Applying Terraform configuration..."
     if ! terraform apply -auto-approve; then
         echo >&2 "Failed to apply Terraform configuration."
