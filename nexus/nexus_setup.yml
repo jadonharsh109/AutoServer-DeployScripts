@@ -86,7 +86,7 @@
           
     - name: Wait for Nexus to fully start
       ansible.builtin.pause:
-        seconds: 60
+        seconds: 90
       delegate_to: localhost
           
     - name: Get Nexus admin password

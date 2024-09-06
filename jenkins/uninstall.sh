@@ -25,7 +25,7 @@ if [ -f "$PUBLIC_KEY_PATH" ]; then
 
     # Destroy Terraform managed infrastructure
     echo "Destroying Terraform managed infrastructure..."
-    terraform destroy -auto-approve
+    terraform destroy -auto-approve && rm terraform.tfvars
 else
     echo "Public key does not exist. Terraform destruction is not necessary."
     exit 1
@@ -40,5 +40,7 @@ if [ -f "$LOCAL_KEY_PATH" ]; then
 else
     echo "Key pair not found, skipping deletion."
 fi
+
+rm inventory.ini
 
 echo "Infrastructure removal complete."

@@ -11,6 +11,7 @@ resource "aws_key_pair" "jenkins-key-pair" {
 resource "aws_security_group" "jenkins_security_group" {
   name        = "Jenkins_Security_group"
   description = "Jenkins_Security_group is created by Terraform"
+  vpc_id      = var.vpc_id
 
   dynamic "ingress" {
     for_each = [22, 8080]
@@ -36,7 +37,7 @@ resource "aws_security_group" "jenkins_security_group" {
 }
 
 resource "aws_instance" "jenkins_instance" {
-  ami             = var.ami_id
+  ami             = var.ubuntu_ami_id
   instance_type   = "t2.large"
   key_name        = aws_key_pair.jenkins-key-pair.key_name
   security_groups = ["${aws_security_group.jenkins_security_group.name}"]
